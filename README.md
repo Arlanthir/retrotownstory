@@ -75,8 +75,3 @@ The GotX picks come from the [GotX Randomizer](https://github.com/blakekl/gotx-r
 ### AI Disclosure
 
 The programming was AI-assisted by Claude.
-
-## Wishlist
-
-- Have some trivia about games.
-- Have different types of store, like a more expensive "system sellers" store or a "deep cuts" / underrated game store for cheaper.

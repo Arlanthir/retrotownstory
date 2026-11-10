@@ -29,6 +29,15 @@ describe("retroachievements.queue", function()
     assert.same({}, state.pendingAchievementGames)
     assert.same({ ["52cfddc12af6a3a64030f62ccf6aca83"] = true }, state.pendingAchievementHashes)
   end)
+
+  it("queues games the caller says were playable, such as an ended GotX loan launched from here", function()
+    local state = save.defaults()
+    local loaned = { id = "gbc:shantae", cheevosId = 4141 }
+    local launched = { [loaned.id] = true }
+    retroachievements.queue(state, { loaned, { id = "gb:other", cheevosId = 9 } },
+      function(game) return launched[game.id] or state.owned[game.id] end)
+    assert.same({ ["4141"] = true }, state.pendingAchievementGames)
+  end)
 end)
 
 describe("retroachievements.trackingSince", function()
