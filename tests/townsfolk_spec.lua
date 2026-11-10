@@ -312,3 +312,41 @@ describe("townsfolk's GotX trivia", function()
     assert.is_true(said)
   end)
 end)
+
+describe("townsfolk.anniversary", function()
+  local function game(name, releasedate) return { id = "snes:" .. name, name = name, releasedate = releasedate } end
+  local first = function() return 1 end
+
+  it("celebrates a game released on this very day first", function()
+    local line = townsfolk.anniversary({
+      game("Month", "19921115T000000"), game("Metroid", "19940319T000000"), game("Year", "19910101T000000"),
+    }, "2026-03-19", first)
+    assert.equal("Metroid", line.game.name)
+    assert.truthy(line.text:find("32 years ago today", 1, true))
+  end)
+
+  it("falls back to this month, including dates that only give the month", function()
+    local line = townsfolk.anniversary({ game("Sonic 2", "19921101T000000") }, "2026-11-10", first)
+    assert.equal("Sonic 2 came out in November 1992: that's 34 years ago this month!", line.text)
+  end)
+
+  it("never says 'today' for a date on the 1st", function()
+    local line = townsfolk.anniversary({ game("Sonic 2", "19921101T000000") }, "2026-11-01", first)
+    assert.is_nil(line.text:find("today", 1, true))
+  end)
+
+  it("falls back to round birthdays for dates that only give the year", function()
+    assert.equal("Streets of Rage turns 35 this year! Time for a replay?",
+      townsfolk.anniversary({ game("Streets of Rage", "19910101T000000") }, "2026-06-10", first).text)
+    assert.is_nil(townsfolk.anniversary({ game("Not round", "19920101T000000") }, "2026-06-10", first))
+  end)
+
+  it("says nothing without a date, or for this year's games", function()
+    assert.is_nil(townsfolk.anniversary({ game("Undated"), game("New", "20260610T000000") }, "2026-06-10", first))
+  end)
+
+  it("says 'a year' for a first birthday", function()
+    local line = townsfolk.anniversary({ game("Young", "20250610T000000") }, "2026-06-10", first)
+    assert.truthy(line.text:find("a year ago today", 1, true))
+  end)
+end)

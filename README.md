@@ -78,6 +78,5 @@ The programming was AI-assisted by Claude.
 
 ## Wishlist
 
-- Release date flashbacks (this game came out on this day X years ago!)
 - Have some trivia about games.
 - Have different types of store, like a more expensive "system sellers" store or a "deep cuts" / underrated game store for cheaper.

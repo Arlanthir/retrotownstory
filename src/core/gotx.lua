@@ -24,6 +24,7 @@ gotx.KINDS = KINDS
 
 local MONTHS = { "January", "February", "March", "April", "May", "June", "July", "August", "September",
   "October", "November", "December" }
+gotx.MONTHS = MONTHS
 
 local function normalize(name)
   return (tostring(name or ""):lower():gsub("[^%w]", ""))

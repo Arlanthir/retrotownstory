@@ -308,6 +308,69 @@ townsfolk.GOTX_TRIVIA_OWNED = {
   "You've got %s, haven't you? It was %s, you know.",
 }
 
+-- Or, one time in ANNIVERSARY_CHANCE, an owned game's release anniversary. Dates on the 1st are
+-- often only a month (or, on 1 January, only a year) that the scraper filled out, so they only
+-- count for "this month" (or round birthdays "this year"), never for "today".
+townsfolk.ANNIVERSARY_CHANCE = 4
+-- Lines take the game's name, then for "day" how long ago, for "month" the month, the year and how
+-- long ago (a line may leave the last out), for "year" its age.
+townsfolk.ANNIVERSARY = {
+  day = {
+    "Did you know %s came out %s ago today? You should give it a spin!",
+    "Happy birthday, %s! It came out %s ago today.",
+  },
+  month = {
+    "%s came out in %s %d: that's %s ago this month!",
+    "This month marks %s's anniversary: it came out in %s %d.",
+  },
+  year = {
+    "%s turns %d this year! Time for a replay?",
+  },
+}
+
+local function yearsAgo(years)
+  return years == 1 and "a year" or ("%d years"):format(years)
+end
+
+-- A line about an owned game's release anniversary on `today` ("YYYY-MM-DD"), or nil: { text, game }.
+-- Exact dates on today come first, then this month's, then round birthdays this year.
+function townsfolk.anniversary(games, today, random)
+  local year, month, day = today:match("^(%d+)-(%d+)-(%d+)")
+  local found = { day = {}, month = {}, year = {} }
+  for _, game in ipairs(games) do
+    local releaseYear, releaseMonth, releaseDay = tostring(game.releasedate or ""):match("^(%d%d%d%d)(%d%d)(%d%d)")
+    local age = releaseYear and tonumber(year) - tonumber(releaseYear)
+    if age and age >= 1 then
+      local entry = { game = game, age = age, month = tonumber(releaseMonth), year = tonumber(releaseYear) }
+      if releaseDay ~= "01" and releaseMonth == month and releaseDay == day then
+        table.insert(found.day, entry)
+      elseif releaseMonth == month and not (releaseMonth == "01" and releaseDay == "01") then
+        table.insert(found.month, entry)
+      elseif releaseMonth == "01" and releaseDay == "01" and age % 5 == 0 then
+        table.insert(found.year, entry)
+      end
+    end
+  end
+  for _, tier in ipairs({ "day", "month", "year" }) do
+    local entries = found[tier]
+    if #entries > 0 then
+      local entry = entries[random(#entries)]
+      local lines = townsfolk.ANNIVERSARY[tier]
+      local line = lines[random(#lines)]
+      local name, text = entry.game.name
+      if tier == "day" then
+        text = line:format(name, yearsAgo(entry.age))
+      elseif tier == "month" then
+        text = line:format(name, gotx.MONTHS[entry.month], entry.year, yearsAgo(entry.age))
+      else
+        text = line:format(name, entry.age)
+      end
+      return { text = text, game = entry.game }
+    end
+  end
+  return nil
+end
+
 -- A GotX line for the library's picks, or nil when there's nothing to say: { text, game }.
 local function gotxLine(info, state, random)
   local current, past, isCurrent = {}, {}, {}
@@ -500,6 +563,10 @@ function townsfolk.talk(villager, context)
     if line then return line end
   end
   local owned = townsfolk.ownedGames(context.catalog)
+  if context.today and random(townsfolk.ANNIVERSARY_CHANCE) == 1 then
+    local line = townsfolk.anniversary(owned, context.today, random)
+    if line then return line end
+  end
   local kind = villager.kind
   local game, text
 
