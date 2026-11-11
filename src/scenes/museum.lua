@@ -1,5 +1,6 @@
 -- The game museum next to Home, where Professor Cork gives new players their first console:
 -- once he's offered it, the player picks one of the oldest consoles in the library from his table.
+local consoles = require("core.consoles")
 local art = require("world.art")
 local economy = require("core.economy")
 local interior = require("world.interior")
@@ -54,9 +55,7 @@ function Museum:drawLive(piece, px, py)
 end
 
 local function describe(console)
-  local sold = console.sold >= 1 and ("%g million"):format(console.sold)
-    or ("%d thousand"):format(math.floor(console.sold * 1000 + 0.5))
-  return ("The %s, from %d. About %s sold."):format(console.name, console.year, sold)
+  return ("The %s, from %d. About %s sold."):format(console.name, console.year, consoles.soldText(console))
 end
 
 -- The console on the table at (x, y), unless it's the one already given away.

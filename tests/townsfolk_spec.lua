@@ -164,7 +164,9 @@ describe("townsfolk", function()
   it("recommends an owned game, or says something when there's nothing to recommend", function()
     local unplayed = game("unplayed", { name = "Super Metroid" })
     local catalog = { systems = { { id = "snes" } }, bySystem = { snes = { owned = { unplayed }, locked = {} } } }
-    local context = { state = state, catalog = catalog, timeline = {}, today = "2026-11-06", random = first }
+    -- The first of everything, except trivia (one roll in TRIVIA_CHANCE), to hear the villager's own topic.
+    local notTrivia = function(n) return n == townsfolk.TRIVIA_CHANCE and n or 1 end
+    local context = { state = state, catalog = catalog, timeline = {}, today = "2026-11-06", random = notTrivia }
     state.ownedConsoles.snes = true
     local tomo = townsfolk.CAST[1]
     local reply = townsfolk.talk(tomo, context)
@@ -348,5 +350,30 @@ describe("townsfolk.anniversary", function()
   it("says 'a year' for a first birthday", function()
     local line = townsfolk.anniversary({ game("Young", "20250610T000000") }, "2026-06-10", first)
     assert.truthy(line.text:find("a year ago today", 1, true))
+  end)
+end)
+
+describe("townsfolk.consoleTrivia", function()
+  local function stateOwning(...)
+    local state = save.defaults()
+    for _, id in ipairs({ ... }) do state.ownedConsoles[id] = true end
+    return state
+  end
+
+  it("tells an owned console's age this year", function()
+    local line = townsfolk.consoleTrivia(stateOwning("ps2"), "2026-11-10", function() return 1 end)
+    assert.equal("Your PlayStation 2 is 26 years old this year! They don't make them like that anymore.", line.text)
+    assert.is_nil(line.game)
+  end)
+
+  it("or how many it sold, in the museum's words", function()
+    local pick = function(n) return n == 2 and 2 or 1 end -- the second kind of fact
+    local line = townsfolk.consoleTrivia(stateOwning("nes"), "2026-11-10", pick)
+    assert.equal("The Nintendo Entertainment System sold about 61.9 million units, you know. You're in good company!",
+      line.text)
+  end)
+
+  it("has nothing to say without a console", function()
+    assert.is_nil(townsfolk.consoleTrivia(stateOwning(), "2026-11-10", function() return 1 end))
   end)
 end)

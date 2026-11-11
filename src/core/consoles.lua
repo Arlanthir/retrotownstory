@@ -72,6 +72,12 @@ local KNOWN = {
   switch = console("Nintendo Switch", "Switch", 2017, 8, nil, 150),
 }
 
+-- How many sold, in words: "61.9 million" or "250 thousand".
+function consoles.soldText(console)
+  return console.sold >= 1 and ("%g million"):format(console.sold)
+    or ("%d thousand"):format(math.floor(console.sold * 1000 + 0.5))
+end
+
 function consoles.get(systemId)
   return KNOWN[systemId]
 end

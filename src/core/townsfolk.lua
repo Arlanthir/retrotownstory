@@ -1,5 +1,6 @@
 -- Villagers in town and what they recommend when you talk to them.
 local arcade = require("core.arcade")
+local consoles = require("core.consoles")
 local daily = require("core.daily")
 local economy = require("core.economy")
 local genres = require("core.genres")
@@ -308,10 +309,11 @@ townsfolk.GOTX_TRIVIA_OWNED = {
   "You've got %s, haven't you? It was %s, you know.",
 }
 
--- Or, one time in ANNIVERSARY_CHANCE, an owned game's release anniversary. Dates on the 1st are
+-- Or, one time in TRIVIA_CHANCE, trivia: an owned game's release anniversary, or a fact about an
+-- owned console (see consoleTrivia), whichever there's something to say about. Dates on the 1st are
 -- often only a month (or, on 1 January, only a year) that the scraper filled out, so they only
 -- count for "this month" (or round birthdays "this year"), never for "today".
-townsfolk.ANNIVERSARY_CHANCE = 4
+townsfolk.TRIVIA_CHANCE = 4
 -- Lines take the game's name, then for "day" how long ago, for "month" the month, the year and how
 -- long ago (a line may leave the last out), for "year" its age.
 townsfolk.ANNIVERSARY = {
@@ -369,6 +371,36 @@ function townsfolk.anniversary(games, today, random)
     end
   end
   return nil
+end
+
+-- Facts about owned consoles: its age this year (%s the console, %d its age), or how many sold
+-- (%s the console, %s the number, as the museum says it).
+townsfolk.CONSOLE_TRIVIA = {
+  age = {
+    "Your %s is %d years old this year! They don't make them like that anymore.",
+    "Can you believe the %s came out %d years ago?",
+  },
+  sold = {
+    "Did you know the %s sold about %s units? Not bad at all!",
+    "The %s sold about %s units, you know. You're in good company!",
+  },
+}
+
+-- A fact about one of the player's consoles on `today` ("YYYY-MM-DD"), or nil: { text }.
+function townsfolk.consoleTrivia(state, today, random)
+  local owned = {}
+  for id in pairs(state.ownedConsoles) do
+    local console = consoles.get(id)
+    if console then table.insert(owned, console) end
+  end
+  if #owned == 0 then return nil end
+  table.sort(owned, function(a, b) return a.name < b.name end)
+  local console = owned[random(#owned)]
+  local age = tonumber(today:sub(1, 4)) - console.year
+  local kind = (age < 1 or random(2) == 2) and console.sold and "sold" or "age"
+  local lines = townsfolk.CONSOLE_TRIVIA[kind]
+  local line = lines[random(#lines)]
+  return { text = kind == "sold" and line:format(console.name, consoles.soldText(console)) or line:format(console.name, age) }
 end
 
 -- A GotX line for the library's picks, or nil when there's nothing to say: { text, game }.
@@ -563,9 +595,13 @@ function townsfolk.talk(villager, context)
     if line then return line end
   end
   local owned = townsfolk.ownedGames(context.catalog)
-  if context.today and random(townsfolk.ANNIVERSARY_CHANCE) == 1 then
-    local line = townsfolk.anniversary(owned, context.today, random)
-    if line then return line end
+  if context.today and random(townsfolk.TRIVIA_CHANCE) == 1 then
+    local lines = {}
+    for _, line in ipairs({ townsfolk.anniversary(owned, context.today, random) or false,
+      townsfolk.consoleTrivia(state, context.today, random) or false }) do
+      if line then table.insert(lines, line) end
+    end
+    if #lines > 0 then return lines[random(#lines)] end
   end
   local kind = villager.kind
   local game, text
