@@ -4,7 +4,8 @@ local log = require("core.log")
 local playtime = require("services.playtime")
 
 -- Tells EmulationStation about play started here, as it records the games it launches itself: one
--- more play per session, the session's time, and when it was last played. Games launched from Retro
+-- more play per session, the session's time, and when it was last played; and about games marked
+-- or unmarked as favorites here (see services/favorites). Games launched from Retro
 -- Town Story bypass ES, so without this its play counts, times and "last played" never move.
 -- Goes through ES's local web API, which keeps ES's copy of the gamelist up to date and saves it
 -- in ES's own way; writing gamelist.xml behind a running ES's back could be lost or clash with it.
@@ -18,6 +19,19 @@ esplay.FILE = "es-sessions.txt"
 -- ES's date format, in local time like ES's own.
 local function esDate(epoch)
   return os.date("%Y%m%dT%H%M%S", epoch)
+end
+
+-- Marks `game` as an ES favorite or not (`on`); `callback(ok)` (optional) tells whether ES took it.
+function esplay.setFavorite(backend, game, on, callback)
+  callback = callback or function() end
+  if not backend.esGameId then return callback(false) end
+  local url = esplay.URL:format(game.system, backend.esGameId(game))
+  http.post(url, json.encode({ favorite = on and "true" or "false" }), function(_, status)
+    local ok = status == 200 or status == 201
+    log(ok and "es: %s %s favorites" or "es: EmulationStation didn't take %s's favorite (%s)",
+      game.name, ok and (on and "added to" or "removed from") or tostring(status))
+    callback(ok)
+  end)
 end
 
 -- Sends the sessions ES hasn't heard of yet (`sessions` is playtime.parseLog's). `onGame(game, total)`

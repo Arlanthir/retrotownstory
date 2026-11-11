@@ -7,6 +7,7 @@ for _, field in ipairs({
   "path", "name", "desc", "image", "thumbnail", "marquee", "video",
   "releasedate", "developer", "publisher", "genre", "players",
   "rating", "playcount", "lastplayed", "gametime", "hidden", "lang", "region", "cheevosId", "cheevosHash",
+  "favorite",
 }) do
   FIELDS[field] = true
 end
@@ -66,6 +67,7 @@ function gamelist.parse(xml, systemId, systemDir)
       game.playcount = tonumber(game.playcount) or 0
       game.gametime = tonumber(game.gametime) or 0
       game.cheevosId = tonumber(game.cheevosId)
+      game.favorite = game.favorite == "true" or nil -- an EmulationStation favorite
       -- RetroAchievements' hash of the ROM; scrapers often fill it in without the id.
       game.cheevosHash = game.cheevosHash and game.cheevosHash:lower()
       -- The id attribute belongs to whichever scraper filled the entry; only trust ScreenScraper's.

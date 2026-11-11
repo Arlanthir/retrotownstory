@@ -50,3 +50,16 @@ describe("gamelist.parse", function()
     assert.equal(0, games[2].gametime)
   end)
 end)
+
+describe("gamelist favorites", function()
+  it("reads EmulationStation's favorite flag", function()
+    local games = gamelist.parse([[<gameList>
+      <game><path>./a.sfc</path><name>A</name><favorite>true</favorite></game>
+      <game><path>./b.sfc</path><name>B</name><favorite>false</favorite></game>
+      <game><path>./c.sfc</path><name>C</name></game>
+    </gameList>]], "snes", "/roms/snes")
+    assert.same({ true }, { games[1].favorite })
+    assert.is_nil(games[2].favorite)
+    assert.is_nil(games[3].favorite)
+  end)
+end)

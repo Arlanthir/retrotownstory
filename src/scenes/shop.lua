@@ -9,7 +9,7 @@ local stores = require("core.stores")
 local townsfolk = require("core.townsfolk")
 local ui = require("ui")
 local Confirm = require("scenes.confirm")
-local Achievements = require("scenes.achievements")
+local favorites = require("services.favorites")
 local GameDetail = require("scenes.gamedetail")
 
 -- A shop sells one list of items; `stock(app)` returns { title, subtitle?, items, footnote?,
@@ -167,8 +167,8 @@ function Shop:action(name)
     self.cursor = self.cursor % #items + 1
   elseif name == "a" and selected and not self.section.consoles then
     self:showDetails(selected)
-  elseif name == "x" and selected and not self.section.consoles and selected.cheevosId then
-    scenes.push(Achievements.new(self.app, selected))
+  elseif name == "x" and selected and not self.section.consoles then
+    favorites.toggle(self.app.backend, selected)
   elseif (name == "a" or name == "y") and selected then
     self.notice = self:buy(selected)
   elseif name == "b" then
@@ -206,7 +206,7 @@ function Shop:draw()
       ui.MARGIN, listTop + 20, listWidth, "center")
   else
     self.scroll = ui.list(section.items, self.cursor, self.scroll, ui.MARGIN, listTop, listWidth, listHeight,
-      function(item) return self:itemLabel(item), ("%d c"):format(self:price(item)), achievements.trophy(self.app.state, item) end)
+      function(item) return self:itemLabel(item), ("%d c"):format(self:price(item)), achievements.trophy(self.app.state, item), item.favorite end)
   end
   if section.footnote then
     local rowHeight = ui.LIST_ROW
@@ -235,7 +235,7 @@ function Shop:draw()
   end
   ui.footer(self.section.consoles and "A: buy   B: leave"
     or ("A: details   %sY: %s   B: leave"):format(
-      self.section.items[self.cursor] and self.section.items[self.cursor].cheevosId and "X: achievements   " or "",
+      self.section.items[self.cursor] and favorites.hint(self.section.items[self.cursor]) or "",
       self.section.selling and "sell" or "buy"))
 end
 

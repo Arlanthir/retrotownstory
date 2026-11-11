@@ -16,6 +16,7 @@ The games come from the player's own collection and its scraped metadata, so sto
 - Play and buy Arcade games at the Arcade Club, with new cabinets every week.
 - Sell games you don't wish to play anymore.
 - Watch trailers for new games on TV, or ask the townsfolk to suggest what to play next.
+- Mark your favorite games, shared with EmulationStation's favorites.
 - Follow [retrohandhelds.gg](https://retrohandhelds.gg)'s GotX game club: its Games of the Month, Game of the Quarter and RetroBits are on the town's board, on loan to play while they're current, and for sale at the GotX Store.
 
 ## Installation

@@ -9,6 +9,7 @@ local daily = require("core.daily")
 local gotx = require("core.gotx")
 local roms = require("core.roms")
 local esplay = require("services.esplay")
+local favorites = require("services.favorites")
 local gotxsync = require("services.gotxsync")
 local http = require("services.http")
 local input = require("core.input")
@@ -148,6 +149,7 @@ local function prepare(newGame)
     app.state.consumedSessions = #sessions
   end
   local games = catalog.allGames(app.backend)
+  favorites.apply(games)
   app.cheevos = app.listing.cheevos
   achievements.resolveIds(games, app.cheevos.ids)
   -- New players get their first console from Professor Cork, in the museum.

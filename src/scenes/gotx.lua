@@ -5,6 +5,7 @@ local scenes = require("core.scenes")
 local ui = require("ui")
 local Achievements = require("scenes.achievements")
 local GameDetail = require("scenes.gamedetail")
+local favorites = require("services.favorites")
 
 -- The GotX board up close (A on it in town): the current picks of the retrohandhelds.gg community's
 -- game club, each with whether the player owns it, has it on loan, or doesn't have it, and the
@@ -46,7 +47,9 @@ function Gotx:action(name)
     local primary
     if not self.app:canPlay(pick.game) then primary = false end
     scenes.push(GameDetail.new(self.app, pick.game, primary))
-  elseif name == "x" and pick and pick.game and pick.game.cheevosId then
+  elseif name == "x" and pick and pick.game then
+    favorites.toggle(self.app.backend, pick.game)
+  elseif name == "y" and pick and pick.game and pick.game.cheevosId then
     scenes.push(Achievements.new(self.app, pick.game))
   elseif name == "b" then
     scenes.pop()
@@ -74,7 +77,10 @@ function Gotx:draw()
   local listTop = ui.HEADER_HEIGHT + 68
   local listWidth = 360
   self.scroll = ui.list(picks, self.cursor, self.scroll, ui.MARGIN, listTop, listWidth, ui.HEIGHT - listTop - 60,
-    function(pick) return pick.game and pick.game.name or pick.winner.title, self:status(pick) end)
+    function(pick)
+      local game = pick.game
+      return game and game.name or pick.winner.title, self:status(pick), nil, game and game.favorite
+    end)
 
   local pick = picks[self.cursor]
   local x = ui.MARGIN * 2 + listWidth
@@ -88,8 +94,8 @@ function Gotx:draw()
   ui.setColor("muted")
   love.graphics.printf(table.concat(lines, "\n"), x, listTop + 188, width, "center")
 
-  ui.footer(("%s%sB: back"):format(pick.game and "A: details   " or "",
-    pick.game and pick.game.cheevosId and "X: achievements   " or ""))
+  ui.footer(("%s%s%sB: back"):format(pick.game and "A: details   " or "", pick.game and favorites.hint(pick.game) or "",
+    pick.game and pick.game.cheevosId and "Y: achievements   " or ""))
 end
 
 return Gotx

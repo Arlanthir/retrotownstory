@@ -152,14 +152,17 @@ function ui.walletPanel(wallet)
 end
 
 -- Screen backdrop, header bar with the title and wallet, and the content panel below it.
-function ui.header(title, wallet)
+-- With `favorite`, a favorite's star follows the title.
+function ui.header(title, wallet, favorite)
   ui.backdrop()
   ui.panel(4, ui.HEADER_HEIGHT - 4, ui.WIDTH - 8, ui.HEIGHT - ui.HEADER_HEIGHT - ui.FOOTER_HEIGHT + 4)
   ui.panel(4, BAR_Y, ui.WIDTH - 8, BAR_HEIGHT)
   local coinsLeft = ui.coins(wallet, WALLET_RIGHT, WALLET_Y)
   love.graphics.setFont(ui.fonts.title)
   ui.setColor("highlight")
-  love.graphics.print(ui.truncate(ui.fonts.title, title, coinsLeft - 40), 20, 10)
+  local shown = ui.truncate(ui.fonts.title, title, coinsLeft - 40 - (favorite and 22 or 0))
+  love.graphics.print(shown, 20, 10)
+  if favorite then ui.star(20 + ui.fonts.title:getWidth(shown) + 10, 10) end
 end
 
 -- Button names in hints map to their icons; "L/R" shows both shoulder buttons.
@@ -298,8 +301,8 @@ end
 local STAR_SIZE, STAR_SPACING = 12, 14
 local starTriangles
 
--- Five stars filled to `rating` (0..1, ES style) in half-star steps.
-function ui.stars(x, y, rating)
+-- A five-pointed star STAR_SIZE wide from (x, y), in the current color.
+local function drawStar(x, y)
   if not starTriangles then
     local points, r = {}, STAR_SIZE / 2
     for i = 0, 9 do
@@ -310,6 +313,20 @@ function ui.stars(x, y, rating)
     end
     starTriangles = love.math.triangulate(points)
   end
+  for _, triangle in ipairs(starTriangles) do
+    love.graphics.polygon("fill", x + triangle[1], y + triangle[2], x + triangle[3], y + triangle[4],
+      x + triangle[5], y + triangle[6])
+  end
+end
+
+-- The favorite's star (see services/favorites), centred on a line of text printed at `lineY`.
+function ui.star(x, lineY)
+  ui.setColor("stars")
+  drawStar(x, lineY + ui.iconOffset(STAR_SIZE))
+end
+
+-- Five stars filled to `rating` (0..1, ES style) in half-star steps.
+function ui.stars(x, y, rating)
   local filled = math.floor(math.max(0, math.min(1, rating)) * 10 + 0.5) / 2
   for i = 0, 4 do
     local starX = x + i * STAR_SPACING
@@ -318,18 +335,15 @@ function ui.stars(x, y, rating)
       if fill > 0 then
         if layer == 1 then ui.setColor("muted", 0.3) else ui.setColor("stars") end
         love.graphics.setScissor(starX, y, STAR_SIZE * fill, STAR_SIZE)
-        for _, triangle in ipairs(starTriangles) do
-          love.graphics.polygon("fill", starX + triangle[1], y + triangle[2], starX + triangle[3], y + triangle[4],
-            starX + triangle[5], y + triangle[6])
-        end
+        drawStar(starX, y)
       end
     end
   end
   love.graphics.setScissor()
 end
 
--- Draws a scrolling list; `label(item)` returns the text, an optional right-aligned value
--- and whether to mark the row with a trophy ("gold" for a gold one).
+-- Draws a scrolling list; `label(item)` returns the text, an optional right-aligned value,
+-- whether to mark the row with a trophy ("gold" for a gold one), and whether with a favorite's star.
 -- Returns the scroll offset that keeps the cursor visible.
 function ui.list(items, cursor, scroll, x, y, width, height, label)
   local rowHeight = ui.LIST_ROW
@@ -348,14 +362,15 @@ function ui.list(items, cursor, scroll, x, y, width, height, label)
       local centerY = rowY + rowHeight / 2
       love.graphics.polygon("fill", x + 6, centerY - 6, x + 6, centerY + 6, x + 13, centerY)
     end
-    local text, value, trophy = label(items[index])
+    local text, value, trophy, favorite = label(items[index])
     local valueWidth = value and f:getWidth(value) + 12 or 0
-    local trophyWidth = trophy and 18 or 0
+    -- The star keeps its own column left of the trophy's, so stars line up down the list.
+    local iconsWidth = favorite and 36 or trophy and 18 or 0
     ui.setColor("text")
-    love.graphics.print(ui.truncate(f, text, width - 28 - valueWidth - trophyWidth), x + 20, textY)
-    if trophy then
-      ui.trophy(x + width - 8 - valueWidth - 14, textY + ui.iconOffset(11), trophy == "gold")
-    end
+    love.graphics.print(ui.truncate(f, text, width - 28 - valueWidth - iconsWidth), x + 20, textY)
+    local trophyX = x + width - 8 - valueWidth - 14
+    if trophy then ui.trophy(trophyX, textY + ui.iconOffset(11), trophy == "gold") end
+    if favorite then ui.star(trophyX - 18, textY) end
     if value then
       ui.setColor("coin")
       love.graphics.printf(value, x + 8, textY, width - 16, "right")

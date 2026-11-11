@@ -3,6 +3,7 @@ local consoles = require("core.consoles")
 local scenes = require("core.scenes")
 local ui = require("ui")
 local Achievements = require("scenes.achievements")
+local favorites = require("services.favorites")
 
 local GameDetail = {}
 GameDetail.__index = GameDetail
@@ -22,7 +23,9 @@ function GameDetail:action(name)
     self.notice = self.primary.run(self)
   elseif name == "b" then
     scenes.pop()
-  elseif name == "x" and self.game.cheevosId then
+  elseif name == "x" then
+    favorites.toggle(self.app.backend, self.game)
+  elseif name == "y" and self.game.cheevosId then
     scenes.push(Achievements.new(self.app, self.game))
   elseif name == "up" or name == "down" then
     local step = name == "up" and -1 or 1
@@ -67,7 +70,7 @@ function GameDetail:draw()
   local game = self.game
   local stats = self.app.backend.playStats(game)
   local console = consoles.get(game.system)
-  ui.header(game.name, self.app.state.wallet)
+  ui.header(game.name, self.app.state.wallet, game.favorite)
 
   local top = ui.HEADER_HEIGHT + 14
   ui.drawCover(ui.fullImage(game), ui.MARGIN, top, 220, 300)
@@ -113,7 +116,7 @@ function GameDetail:draw()
   end
   ui.footer(("%s%s%sB: back"):format(self.primary and ("A: %s   "):format(self.primary.hint) or "",
     self.descMaxScroll > 0 and "Up/Down: scroll   " or "",
-    self.game.cheevosId and "X: achievements   " or ""))
+    favorites.hint(self.game) .. (self.game.cheevosId and "Y: achievements   " or "")))
 end
 
 -- The description, wrapped to `width` and scrolled with up/down when it's taller than `height`.

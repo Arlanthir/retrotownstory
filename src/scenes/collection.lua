@@ -8,6 +8,7 @@ local scenes = require("core.scenes")
 local ui = require("ui")
 local Achievements = require("scenes.achievements")
 local GameDetail = require("scenes.gamedetail")
+local favorites = require("services.favorites")
 
 local Collection = {}
 Collection.__index = Collection
@@ -21,7 +22,17 @@ end
 function Collection.consoles(app)
   local built = app.catalog
   local tabs = {}
-  -- The GotX picks on loan come first, on any console.
+  -- The player's favorites they can play come first (EmulationStation's, see services/favorites),
+  -- then the GotX picks on loan, on any console.
+  local favoriteGames = {}
+  for _, game in ipairs(catalog.allGames(app.backend, app.settings)) do
+    if game.favorite and app:canPlay(game) then table.insert(favoriteGames, game) end
+  end
+  if #favoriteGames > 0 then
+    table.sort(favoriteGames, catalog.byName)
+    table.insert(tabs, { name = "Favorites", games = favoriteGames, total = #favoriteGames,
+      note = "Your favorite games, as in EmulationStation" })
+  end
   local loans, seen = {}, {}
   for _, pick in ipairs(built.gotx.current) do
     local game = built.gotx.gameOf[pick]
@@ -91,7 +102,17 @@ function Collection:action(name)
     self.cursor = self.cursor % #games + 1
   elseif name == "a" and games[self.cursor] then
     scenes.push(GameDetail.new(self.app, games[self.cursor]))
-  elseif name == "x" and games[self.cursor] and games[self.cursor].cheevosId then
+  elseif name == "x" and games[self.cursor] then
+    favorites.toggle(self.app.backend, games[self.cursor])
+    -- The Favorites tab follows at once (it comes with the first favorite and goes with the last),
+    -- while the player stays on the tab they're on.
+    local tabName = self.shelved.tabs[self.tab].name
+    self:enter()
+    for i, tab in ipairs(self.shelved.tabs) do
+      if tab.name == tabName then self.tab = i end
+    end
+    self.cursor = math.max(1, math.min(self.cursor, #self:games()))
+  elseif name == "y" and games[self.cursor] and games[self.cursor].cheevosId then
     scenes.push(Achievements.new(self.app, games[self.cursor]))
   elseif name == "b" then
     scenes.pop()
@@ -123,7 +144,7 @@ function Collection:draw()
   local listTop = ui.HEADER_HEIGHT + 68
   local listWidth = 360
   self.scroll = ui.list(games, self.cursor, self.scroll, ui.MARGIN, listTop, listWidth, ui.HEIGHT - listTop - 60,
-    function(game) return game.name, nil, achievements.trophy(self.app.state, game) end)
+    function(game) return game.name, nil, achievements.trophy(self.app.state, game), game.favorite end)
 
   -- The first games of the neighbouring tabs are what L/R shows next.
   local neighbours = {}
@@ -141,8 +162,8 @@ function Collection:draw()
     ui.coverWithCaption(selected, coverX, listTop, ui.WIDTH - coverX - ui.MARGIN, 220)
   end
 
-  ui.footer(("L/R: %s   A: details   %sB: leave"):format(shelved.tabWord:lower(),
-    selected and selected.cheevosId and "X: achievements   " or ""))
+  ui.footer(("L/R: %s   A: details   %s%sB: leave"):format(shelved.tabWord:lower(),
+    selected and favorites.hint(selected) or "", selected and selected.cheevosId and "Y: achievements   " or ""))
 end
 
 return Collection
