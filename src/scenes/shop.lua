@@ -114,6 +114,10 @@ function Shop:buy(item, onBought)
     local firstCabinet = self.section.arcade and not arcade.ownsAny(self.app.state.owned)
     if self.section.consoles then
       ok, result = economy.buyConsole(self.app.state, item, self.app.catalog.bySystem[item.id].locked, love.math.random)
+      if ok then
+        stores.restock(self.app.state, self.app.catalog, progression.timeline(self.app.catalog.systems),
+          os.date("%Y-%m-%d"), love.math.random, item.id)
+      end
     elseif self.section.arcade then
       ok, result = arcade.buy(self.app.state, item)
     else
@@ -153,7 +157,7 @@ end
 
 function Shop:showDetails(item)
   scenes.push(GameDetail.new(self.app, item, {
-    hint = ("%s for %d coins"):format(self.section.selling and "sell" or "buy", self:price(item)),
+    hint = ("%s $%d"):format(self.section.selling and "sell" or "buy", self:price(item)),
     run = function() return self:buy(item, scenes.pop) end,
   }))
 end

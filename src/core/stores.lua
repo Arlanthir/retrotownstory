@@ -163,6 +163,36 @@ function stores.offer(store, state, built, timeline, today, random)
   return games, changed, inStock
 end
 
+-- Games a console bought today adds to each open genre store's offer (and the GotX store's), on top
+-- of what's already there, so its games show up around the mall at once. Nothing already offered is
+-- drawn again. Stores without an offer for `today` draw theirs as usual.
+stores.RESTOCK = 2
+
+function stores.restock(state, built, timeline, today, random, consoleId)
+  for _, store in ipairs(stores.list(state, built, timeline)) do
+    local offer = state.offers[store.id]
+    if store.kind ~= "console" and offer and offer.day == today then
+      local skip, pool = {}, {}
+      for _, id in ipairs(offer.ids) do skip[id] = true end
+      for _, id in ipairs(offer.missing or {}) do skip[id] = true end
+      for _, game in ipairs(stores.stock(store, state, built, timeline)) do
+        if game.system == consoleId and not skip[game.id] and not state.owned[game.id] then table.insert(pool, game) end
+      end
+      local added = 0
+      while added < stores.RESTOCK and #pool > 0 do
+        local game = table.remove(pool, random(#pool))
+        if roms.present(game) then
+          table.insert(offer.ids, game.id)
+          added = added + 1
+        else
+          offer.missing = offer.missing or {}
+          table.insert(offer.missing, game.id)
+        end
+      end
+    end
+  end
+end
+
 -- Every game in today's store picks, as { game, store }, each game once (under the first store
 -- that offers it). `eligible(game)` optionally filters games; `random` is only used to roll new picks.
 function stores.onSale(state, built, timeline, today, random, eligible)

@@ -250,6 +250,64 @@ describe("stores.offer", function()
   end)
 end)
 
+describe("stores.restock", function()
+  local minimum = stores.MIN_GENRE_GAMES
+  before_each(function() stores.MIN_GENRE_GAMES = 1 end)
+  after_each(function() stores.MIN_GENRE_GAMES = minimum end)
+
+  local snesGames = {}
+  for i = 1, 4 do table.insert(snesGames, game("snes", ("Platformer %d"):format(i), "platform")) end
+  table.insert(snesGames, game("snes", "F-Zero", "racing"))
+  local restockBuilt = {
+    bySystem = {
+      nes = { owned = {}, locked = { game("nes", "Mario", "platform"), game("nes", "Zelda", "adventure") } },
+      snes = { owned = {}, locked = snesGames },
+    },
+  }
+  local today = "2026-11-14"
+  local function first() return 1 end
+
+  local function boughtSnes()
+    local state = save.defaults()
+    state.ownedConsoles.nes = true
+    for _, store in ipairs(stores.list(state, restockBuilt, timeline)) do
+      stores.offer(store, state, restockBuilt, timeline, today, first)
+    end
+    state.ownedConsoles.snes = true
+    state.owned["snes:Platformer 1"] = true -- from its starter pack
+    return state
+  end
+
+  it("adds a few of the new console's games to the genre stores already open today", function()
+    local state = boughtSnes()
+    stores.restock(state, restockBuilt, timeline, today, first, "snes")
+    assert.same({ "nes:Mario", "snes:Platformer 2", "snes:Platformer 3" }, state.offers["genre:platform"].ids)
+    assert.same({ "nes:Zelda" }, state.offers["genre:adventure"].ids)
+    assert.same({ "nes:Mario", "nes:Zelda" }, state.offers.nes.ids)
+  end)
+
+  it("leaves stores that open with the console to draw their own offer", function()
+    local state = boughtSnes()
+    stores.restock(state, restockBuilt, timeline, today, first, "snes")
+    assert.is_nil(state.offers["genre:racing"])
+    assert.is_nil(state.offers.snes)
+  end)
+
+  it("doesn't add to an offer from another day", function()
+    local state = boughtSnes()
+    stores.restock(state, restockBuilt, timeline, "2026-11-15", first, "snes")
+    assert.same({ "nes:Mario" }, state.offers["genre:platform"].ids)
+  end)
+
+  it("keeps the added games in the offer for the rest of the day", function()
+    local state = boughtSnes()
+    stores.restock(state, restockBuilt, timeline, today, first, "snes")
+    local store = { id = "genre:platform", kind = "genre", genre = { id = "platform" } }
+    local games = stores.offer(store, state, restockBuilt, timeline, today, first)
+    assert.same({ "nes:Mario", "snes:Platformer 2", "snes:Platformer 3" }, ids(games))
+  end)
+end)
+
 describe("stores.featured", function()
   local minimum = stores.MIN_GENRE_GAMES
   before_each(function() stores.MIN_GENRE_GAMES = 1 end)

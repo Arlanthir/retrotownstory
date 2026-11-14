@@ -172,18 +172,21 @@ local BUTTON_ICONS = {
 }
 
 -- Hints look like "A: buy   B: leave": entries separated by 2+ spaces, each "<button>: <label>".
+-- A label ending in "$<amount>" shows the amount after a coin ("A: buy $45").
 local function parseHint(hint)
   local entries = {}
   for entry in (hint .. "  "):gmatch("(.-)%s%s+") do
     local button, label = entry:match("^(%S+):%s*(.*)$")
-    if button and BUTTON_ICONS[button] then
-      table.insert(entries, { icons = BUTTON_ICONS[button], label = label })
-    elseif entry ~= "" then
-      table.insert(entries, { icons = {}, label = entry })
+    if not (button and BUTTON_ICONS[button]) then button, label = nil, entry end
+    if label ~= "" or button then
+      local text, amount = label:match("^(.-)%s*%$(%d+)$")
+      table.insert(entries, { icons = button and BUTTON_ICONS[button] or {}, label = text or label, coins = amount })
     end
   end
   return entries
 end
+
+local HINT_COIN = 24 -- the coin and the space after it
 
 local function hintWidth(entries)
   local f, width = ui.fonts.small, 0
@@ -192,6 +195,7 @@ local function hintWidth(entries)
       width = width + image(icon):getWidth() + 3
     end
     width = width + f:getWidth(entry.label) + 3 + (i < #entries and 18 or 0)
+    if entry.coins then width = width + 6 + HINT_COIN + f:getWidth(entry.coins) end
   end
   return width
 end
@@ -206,9 +210,16 @@ local function drawHint(entries, x, centerY)
       love.graphics.draw(img, x, math.floor(centerY - img:getHeight() / 2))
       x = x + img:getWidth() + 3
     end
+    local textY = math.floor(centerY - f:getAscent() * 0.65)
     ui.setColor("text")
-    love.graphics.print(entry.label, x + 3, math.floor(centerY - f:getAscent() * 0.65))
+    love.graphics.print(entry.label, x + 3, textY)
     x = x + f:getWidth(entry.label) + 21
+    if entry.coins then
+      ui.coin(x - 12, textY)
+      ui.setColor("text")
+      love.graphics.print(entry.coins, x - 12 + HINT_COIN, textY)
+      x = x + 6 + HINT_COIN + f:getWidth(entry.coins)
+    end
   end
 end
 
