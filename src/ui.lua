@@ -266,16 +266,18 @@ function ui.truncate(font, text, maxWidth)
   if cached then return cached end
   local result = text
   if font:getWidth(text) > maxWidth then
-    local low, high = 0, #text
+    -- Cuts only between characters: measuring half a multi-byte one is a UTF-8 error in LÖVE.
+    local ends = { [0] = 0 }
+    for i = 1, #text do
+      local nextByte = text:byte(i + 1)
+      if not nextByte or nextByte < 0x80 or nextByte >= 0xC0 then table.insert(ends, i) end
+    end
+    local low, high = 0, #ends
     while low < high do
       local mid = math.ceil((low + high) / 2)
-      if font:getWidth(text:sub(1, mid) .. "...") <= maxWidth then low = mid else high = mid - 1 end
+      if font:getWidth(text:sub(1, ends[mid]) .. "...") <= maxWidth then low = mid else high = mid - 1 end
     end
-    -- Don't cut a multi-byte UTF-8 character in half.
-    while low > 0 and text:byte(low + 1) and text:byte(low + 1) >= 0x80 and text:byte(low + 1) < 0xC0 do
-      low = low - 1
-    end
-    result = text:sub(1, low):gsub("%s+$", "") .. "..."
+    result = text:sub(1, ends[low]):gsub("%s+$", "") .. "..."
   end
   truncated[font][key] = result
   return result

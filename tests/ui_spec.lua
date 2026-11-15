@@ -24,4 +24,14 @@ describe("ui.truncate", function()
     assert.equal("Pok...", ui.truncate(font, "Pokémon Stadium", 49))
     assert.equal("Poké...", ui.truncate(font, "Pokémon Stadium", 56))
   end)
+
+  it("never measures half a multi-byte character, which LÖVE rejects", function()
+    local strict = { getWidth = function(_, text)
+      assert(utf8.len(text), "UTF-8 decoding error: Invalid UTF-8")
+      return #text * 7
+    end }
+    for width = 21, 140, 7 do
+      assert.is_truthy(utf8.len(ui.truncate(strict, "Pokémon Édition Spéciale éééé", width)))
+    end
+  end)
 end)
