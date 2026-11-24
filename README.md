@@ -44,9 +44,22 @@ If you wish to send a token of your appreciation, you may do so via [Ko-Fi](http
 
 Built with [LÖVE](https://love2d.org) 11.5 and distributed as a PortMaster port.
 
+Setup on macOS (with [Homebrew](https://brew.sh)):
+
+```sh
+# LÖVE 11.5 (Homebrew's love cask is disabled, so take it from the release)
+curl -LO https://github.com/love2d/love/releases/download/11.5/love-11.5-macos.zip
+unzip love-11.5-macos.zip && mv love.app /Applications/ && rm love-11.5-macos.zip
+# Lua and LuaRocks for the tests; ffmpeg for the TV's videos
+brew install luarocks ffmpeg
+luarocks install --local busted   # installs ~/.luarocks/bin/busted
+```
+
+If macOS refuses to open `love.app` the first time, allow it in System Settings → Privacy & Security. `zip`, `curl` and `sqlite3`, used by the scripts, come with macOS. Without ffmpeg the game runs, but the TV plays nothing.
+
 - Run on desktop: `love src` (uses the mock backend; force one with `love src --backend mock`).
 - Controls on keyboard: arrows, `Z`/`Enter` = A, `X`/`Esc` = B (hold to run), `A`/`S` = X/Y, `Q`/`W` = L/R, `Space` = Start, `Tab` = Select (hold for the FPS counter).
-- Tests: `luarocks install busted`, then `busted` from the repo root.
+- Tests: `~/.luarocks/bin/busted` from the repo root (or `busted`, with `~/.luarocks/bin` on your `PATH`).
 - Screenshot: `love src --screenshot 2` saves `screenshot.png` to the LÖVE save folder after 2 seconds and quits.
 - GotX: `scripts/update-gotx.sh` refreshes the GotX winners the game ships with (`src/assets/gotx/winners.tsv`); the game also fetches newer ones itself when a new pick is due.
 - Port: `scripts/build-port.sh` builds `dist/ports/` (copy it to `/userdata/roms/ports/`) and `dist/retrotownstory-<version>.zip` (for PortMaster's installer). On its first run, the port adds its name, screenshot, box art and logo to EmulationStation. `scripts/port-art.sh` redraws that art in `port/`.

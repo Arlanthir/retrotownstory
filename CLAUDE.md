@@ -3,6 +3,7 @@
 LÖVE 11.5 + LuaJIT game distributed as a PortMaster port. The target is an Anbernic RG40XXV running Knulli (Batocera EmulationStation) at 640x480. The README covers what the game is, setup and credits. These notes cover how the code fits together and what was decided.
 
 ## Commands
+- Setup on a new machine: the README's Development section (LÖVE from its GitHub release, as Homebrew's cask is disabled; `luarocks`, `ffmpeg`, `busted --local`).
 - Tests: `~/.luarocks/bin/busted` (specs in `tests/`, `.busted` puts `src/` on the path). Run them after every change.
 - Desktop run: `/Applications/love.app/Contents/MacOS/love src` (mock backend). Before handing a build over, run it once with the device's exact args, `love src --layout nintendo`.
 - Screenshot: `love src --screenshot 1` writes `~/Library/Application Support/LOVE/retrotownstory/screenshot.png`.
