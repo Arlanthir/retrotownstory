@@ -69,7 +69,7 @@ LÖVE 11.5 + LuaJIT game distributed as a PortMaster port. The target is an Anbe
   - A console costs `generation * 100`.
   - Handhelds count a generation below their historical one (`handheld` in `core/consoles.lua`), for prices and progression alike: their games can't compete in complexity with the home consoles of their time. The Switch counts as a home console.
 - **Earning coins:**
-  - Play: 2 coins per minute, capped at 120 minutes per session.
+  - Play: 1 coin per minute (2 until 2026-11-24), capped at 120 minutes per session.
   - RetroAchievements: 1 coin per point (5 until 2026-11-10, when the user found coins came too fast), x2 in hardcore. Unlocks from before tracking started pay x0.5, once.
   - Game ids: scrapers often give a `cheevosHash` without a `cheevosId`. The sync then fetches the game lists of owned consoles (`API_GetGameList`, with hashes; one console per request), at most weekly, and keeps the ids of library games in `cheevos.txt` in the save folder. Owned games that get an id this way are checked at once, and played games without one wait in `pendingAchievementHashes`. Consoles' RetroAchievements ids are `ra` in `core/consoles.lua`. Matching by hash only is deliberate: a title match without a hash match is a ROM version the emulator won't award achievements for. Checked on the device on 2026-11-07: Tomb Raider II (hash match) showed achievements, and Tomb Raider III (title match only) showed none. The lookup itself was confirmed on the device the same day: only the owned consoles were looked up, and Psychic World (hash only) paid out.
 - **Starting out:**

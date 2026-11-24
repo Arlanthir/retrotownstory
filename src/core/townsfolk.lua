@@ -215,14 +215,17 @@ townsfolk.CAST = {
     } },
 }
 
+local function coins(count)
+  return count == 1 and "a coin" or ("%d coins"):format(count)
+end
+
 -- The people at home in town's houses (house i is in reading order on the town map), each with
 -- hints about how Retro Town Story works, given in turn.
 townsfolk.RESIDENTS = {
   { id = "ona", name = "Elder Ona", sprite = "Shaman", hints = {
-    ("Every minute you spend playing pays %d coins, up to %d minutes a session. The coins are waiting when you get back.")
-      :format(economy.COINS_PER_MINUTE, economy.SESSION_CAP_MINUTES),
-    economy.COINS_PER_RA_POINT == 1 and "RetroAchievements pay a coin for every point, and twice that in hardcore mode."
-      or ("RetroAchievements pay %d coins for every point, and twice that in hardcore mode."):format(economy.COINS_PER_RA_POINT),
+    ("Every minute you spend playing pays %s, up to %d minutes a session. The coins are waiting when you get back.")
+      :format(coins(economy.COINS_PER_MINUTE), economy.SESSION_CAP_MINUTES),
+    ("RetroAchievements pay %s for every point, and twice that in hardcore mode."):format(coins(economy.COINS_PER_RA_POINT)),
     "Achievements you unlocked before coming to town still pay, at half the rate, once.",
     "Games that are scraped with achievement data show a trophy in the lists.",
   } },

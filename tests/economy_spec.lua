@@ -30,7 +30,7 @@ end)
 describe("economy.playEarnings", function()
   it("pays per whole minute", function()
     assert.equal(0, economy.playEarnings(59))
-    assert.equal(20, economy.playEarnings(10 * 60 + 30))
+    assert.equal(10 * economy.COINS_PER_MINUTE, economy.playEarnings(10 * 60 + 30))
   end)
 
   it("caps a single session", function()

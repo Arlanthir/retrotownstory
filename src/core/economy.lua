@@ -6,7 +6,7 @@ local economy = {}
 
 economy.STARTER_WALLET = 100
 economy.STARTER_GAMES = 3
-economy.COINS_PER_MINUTE = 2
+economy.COINS_PER_MINUTE = 1
 economy.SESSION_CAP_MINUTES = 120
 economy.COINS_PER_RA_POINT = 1
 economy.HARDCORE_MULTIPLIER = 2
