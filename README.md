@@ -21,7 +21,7 @@ The games come from the player's own collection and its scraped metadata, so sto
 
 ## Installation
 
-1. Download [v0.2.0](https://github.com/Arlanthir/retrotownstory/releases/download/v0.2.0/retrotownstory-0.2.0.zip) from the releases page.
+1. Download [v0.3.0](https://github.com/Arlanthir/retrotownstory/releases/download/v0.3.0/retrotownstory-0.3.0.zip) from the releases page.
 2. Place it in `/userdata/system/.local/share/PortMaster/autoinstall` or unzip it to `/roms/ports` without creating extra folders.
 
 ## RetroAchievements Setup
