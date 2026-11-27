@@ -12,6 +12,8 @@ retroachievements.CONFIG = "retroachievements.txt"
 retroachievements.PROGRESS_URL = "https://retroachievements.org/API/API_GetGameInfoAndUserProgress.php?g=%d&u=%s&y=%s"
 -- A console's games that have achievements, with their ROM hashes.
 retroachievements.GAME_LIST_URL = "https://retroachievements.org/API/API_GetGameList.php?i=%d&h=1&f=1&y=%s"
+-- The player's recently played games, to learn the ids of games with no hash (see achievements.matchPlays).
+retroachievements.RECENT_URL = "https://retroachievements.org/API/API_GetUserRecentlyPlayedGames.php?u=%s&y=%s&c=50"
 
 -- Reads "key=value" lines; a line with only a key-like value counts as the API key.
 function retroachievements.parseConfig(text)
@@ -40,16 +42,25 @@ local function urlEncode(text)
 end
 
 -- Owned (and loaned) games played since the last launch get their achievements checked at the next sync.
--- Games with only a ROM hash wait for the sync to look up their id.
+-- Games with only a ROM hash wait for the sync to look up their id. Games with neither, launched
+-- from here, wait for it to find them among the player's recently played games.
 -- `playable(game)` tells owned games and GotX loans apart from the rest (default: owned games).
-function retroachievements.queue(state, played, playable)
+-- `sessions` maps a game id to its last session launched from here ({ start, seconds }), if any.
+function retroachievements.queue(state, played, playable, sessions)
   playable = playable or function(game) return state.owned[game.id] end
+  sessions = sessions or {}
   for _, game in ipairs(played) do
+    local session = sessions[game.id]
+    local console = consoles.get(game.system)
     if not playable(game) then
       log("retroachievements: played %s, not owned", game.name)
     elseif not game.cheevosId and game.cheevosHash then
       log("retroachievements: played %s, queued its ROM hash to look up its id", game.name)
       state.pendingAchievementHashes[game.cheevosHash] = true
+    elseif not game.cheevosId and session and console and console.ra then
+      log("retroachievements: played %s, no id or hash, will look for it among recently played games", game.name)
+      state.pendingAchievementPlays[game.id] =
+        { from = session.start, to = session.start + session.seconds, console = console.ra }
     elseif not game.cheevosId then
       log("retroachievements: played %s, no RetroAchievements id or hash in its metadata", game.name)
     else
@@ -153,6 +164,36 @@ function retroachievements.sync(app, firstSession)
   for gameId in pairs(state.pendingAchievementGames) do check(gameId) end
 
   local games = catalog.allGames(app.backend)
+  if next(state.pendingAchievementPlays) then
+    http.get(retroachievements.RECENT_URL:format(urlEncode(user.username), urlEncode(user.apikey)), function(body)
+      local recent = achievements.recentGames(body)
+      if not recent then
+        log("retroachievements: couldn't get recently played games, will retry next launch")
+        return
+      end
+      local known = {}
+      for _, game in ipairs(games) do
+        if game.cheevosId then known[game.cheevosId] = true end
+      end
+      local found = achievements.matchPlays(state.pendingAchievementPlays, recent, known)
+      for _, game in ipairs(games) do
+        local id = state.pendingAchievementPlays[game.id] and found[game.id]
+        if id then
+          log("retroachievements: %s is game %d, from recently played games", game.name, id)
+          game.cheevosId = id
+          cache.games[game.id] = id
+          state.pendingAchievementGames[tostring(id)] = true
+          check(tostring(id))
+        elseif state.pendingAchievementPlays[game.id] then
+          log("retroachievements: %s isn't among recently played games", game.name)
+        end
+      end
+      state.pendingAchievementPlays = {}
+      app:persist()
+      if next(found) then love.filesystem.write(achievements.ID_CACHE, achievements.encodeIdCache(cache)) end
+    end)
+  end
+
   local inLibrary = {}
   for _, game in ipairs(games) do
     if game.cheevosHash then inLibrary[game.cheevosHash] = true end

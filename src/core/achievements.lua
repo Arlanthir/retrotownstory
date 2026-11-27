@@ -102,17 +102,21 @@ end
 -- per-console game lists. The cache is { fetched, ids }: fetched maps a RetroAchievements console
 -- id (as a string) to when its list was fetched (epoch), and ids maps a lowercase ROM hash to a
 -- game id. It's saved as plain lines ("fetched <console> <epoch>", "<hash> <id>"), which are much
--- cheaper than JSON to write on the device.
+-- cheaper than JSON to write on the device. It also keeps the ids learned from play (see
+-- matchPlays), as `games`: a library game's id to its RetroAchievements id ("game <id> <game id>").
 achievements.ID_CACHE = "cheevos.txt"
 -- New achievement sets come out all the time, so a console's list is fetched again after this.
 achievements.ID_LIST_DAYS = 7
 
 function achievements.decodeIdCache(text)
-  local cache = { fetched = {}, ids = {} }
+  local cache = { fetched = {}, ids = {}, games = {} }
   for line in (text or ""):gmatch("[^\n]+") do
     local console, at = line:match("^fetched (%d+) (%d+)$")
+    local id, game = line:match("^game (%d+) (.+)$")
     if console then
       cache.fetched[console] = tonumber(at)
+    elseif id then
+      cache.games[game] = tonumber(id)
     else
       local hash, id = line:match("^(%x+) (%d+)$")
       if hash then cache.ids[hash] = tonumber(id) end
@@ -128,6 +132,9 @@ function achievements.encodeIdCache(cache)
   end
   for hash, id in pairs(cache.ids) do
     lines[#lines + 1] = hash .. " " .. id
+  end
+  for game, id in pairs(cache.games) do
+    lines[#lines + 1] = "game " .. id .. " " .. game
   end
   return table.concat(lines, "\n") .. "\n"
 end
@@ -145,11 +152,12 @@ function achievements.hashIds(body)
   return ids
 end
 
--- Fills in each game's missing cheevosId from its hash. Returns the games it found ids for.
-function achievements.resolveIds(games, ids)
+-- Fills in each game's missing cheevosId from its hash, or else from `byGame` (ids by library game
+-- id, learned from play). Returns the games it found ids for.
+function achievements.resolveIds(games, ids, byGame)
   local found = {}
   for _, game in ipairs(games) do
-    local id = not game.cheevosId and game.cheevosHash and ids[game.cheevosHash]
+    local id = not game.cheevosId and (game.cheevosHash and ids[game.cheevosHash] or byGame and byGame[game.id])
     if id then
       game.cheevosId = id
       table.insert(found, game)
@@ -173,6 +181,55 @@ function achievements.consolesToRefresh(games, fetched, consoleOf, now)
   end
   table.sort(list)
   return list
+end
+
+-- Games with neither an id nor a hash (multi-disc .m3u playlists: scrapers hash the playlist, while
+-- RetroAchievements hashes its first disc) learn their id from play: the emulator hashes the disc
+-- itself, and the game shows up among the player's recently played games on RetroAchievements.
+-- A recent game counts when it's on the same console and was last played during the session, give
+-- or take PLAY_MARGIN seconds.
+achievements.PLAY_MARGIN = 120
+
+-- { id, console, at } per game in an API_GetUserRecentlyPlayedGames response, `at` being its
+-- "LastPlayed" (UTC); nil if unreadable.
+function achievements.recentGames(body)
+  local ok, list = pcall(json.decode, body or "")
+  if not ok or type(list) ~= "table" then return nil end
+  local recent = {}
+  for _, game in ipairs(list) do
+    local id, console = tonumber(game.GameID), tonumber(game.ConsoleID)
+    if id and console and type(game.LastPlayed) == "string" then
+      table.insert(recent, { id = id, console = console, at = game.LastPlayed })
+    end
+  end
+  return recent
+end
+
+-- RetroAchievements ids by library game id for `plays` ({ [game id] = { from, to, console } }, a
+-- session's start and end epochs), from `recent` (see recentGames). `known` is a set of ids other
+-- library games already have, which can't be the match. A play with more than one candidate, or
+-- one that shares its only candidate with another play, gets none.
+function achievements.matchPlays(plays, recent, known)
+  local candidates, claims = {}, {}
+  for gameId, play in pairs(plays) do
+    local from = os.date("!%Y-%m-%d %H:%M:%S", play.from - achievements.PLAY_MARGIN)
+    local to = os.date("!%Y-%m-%d %H:%M:%S", play.to + achievements.PLAY_MARGIN)
+    local match
+    for _, game in ipairs(recent) do
+      if game.console == play.console and not known[game.id] and game.at >= from and game.at <= to then
+        match = (match == nil or match == game.id) and game.id or false
+      end
+    end
+    if match then
+      candidates[gameId] = match
+      claims[match] = (claims[match] or 0) + 1
+    end
+  end
+  local found = {}
+  for gameId, id in pairs(candidates) do
+    if claims[id] == 1 then found[gameId] = id end
+  end
+  return found
 end
 
 return achievements

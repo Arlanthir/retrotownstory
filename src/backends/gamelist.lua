@@ -69,7 +69,8 @@ function gamelist.parse(xml, systemId, systemDir)
       game.cheevosId = tonumber(game.cheevosId)
       game.favorite = game.favorite == "true" or nil -- an EmulationStation favorite
       -- RetroAchievements' hash of the ROM; scrapers often fill it in without the id.
-      game.cheevosHash = game.cheevosHash and game.cheevosHash:lower()
+      -- Scrapers write all zeros for files they couldn't hash, such as .m3u playlists.
+      game.cheevosHash = game.cheevosHash and not game.cheevosHash:match("^0+$") and game.cheevosHash:lower() or nil
       -- The id attribute belongs to whichever scraper filled the entry; only trust ScreenScraper's.
       if body:find('<scrap name="ScreenScraper"', 1, true) then
         game.screenscraperId = tonumber(attributes:match('id="(%d+)"'))

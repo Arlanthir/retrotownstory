@@ -20,6 +20,7 @@ function save.defaults()
     achievementsSince = "", -- UTC time tracking started; earlier unlocks pay less
     pendingAchievementGames = {}, -- RetroAchievements game ids to check at the next sync
     pendingAchievementHashes = {}, -- ROM hashes of played games whose id is still being looked up
+    pendingAchievementPlays = {}, -- game id -> { from, to, console }: the last session of a played game with no id or hash
     creditedGametime = {},
     lastPlayed = {}, -- game id -> epoch of the last play the game noticed
     consumedSessions = 0,

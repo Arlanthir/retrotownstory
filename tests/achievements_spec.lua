@@ -94,10 +94,58 @@ describe("achievements ids by ROM hash", function()
   end)
 
   it("saves the id cache as lines and reads it back, starting empty without one", function()
-    local cache = { fetched = { ["15"] = 1731000000 }, ids = { ["52cfddc1"] = 14059, abc = 9 } }
+    local cache = { fetched = { ["15"] = 1731000000 }, ids = { ["52cfddc1"] = 14059, abc = 9 },
+      games = { ["psx:./Gran Turismo 2 (USA).m3u"] = 11220 } }
     assert.same(cache, achievements.decodeIdCache(achievements.encodeIdCache(cache)))
-    assert.same({ fetched = {}, ids = {} }, achievements.decodeIdCache(nil))
-    assert.same({ fetched = {}, ids = {} }, achievements.decodeIdCache("{broken"))
+    assert.same({ fetched = {}, ids = {}, games = {} }, achievements.decodeIdCache(nil))
+    assert.same({ fetched = {}, ids = {}, games = {} }, achievements.decodeIdCache("{broken"))
+  end)
+
+  it("fills in ids learned from play for games without a hash", function()
+    local playlist = { id = "psx:./gt2.m3u", system = "psx" }
+    local found = achievements.resolveIds({ playlist, { id = "psx:./other.chd" } }, {}, { [playlist.id] = 11220 })
+    assert.same({ playlist }, found)
+    assert.equal(11220, playlist.cheevosId)
+  end)
+end)
+
+describe("achievements ids from play", function()
+  local start = os.time({ year = 2026, month = 11, day = 12, hour = 11 })
+  local function utc(epoch) return os.date("!%Y-%m-%d %H:%M:%S", epoch) end
+  local play = { from = start, to = start + 1800, console = 12 }
+
+  it("reads recently played games", function()
+    local body = '[{"GameID":11220,"ConsoleID":12,"Title":"Gran Turismo 2","LastPlayed":"2026-11-12 11:41:22"},'
+      .. '{"GameID":"7","ConsoleID":"3","LastPlayed":"2026-11-01 10:00:00"},{"Title":"broken"}]'
+    assert.same({ { id = 11220, console = 12, at = "2026-11-12 11:41:22" }, { id = 7, console = 3, at = "2026-11-01 10:00:00" } },
+      achievements.recentGames(body))
+    assert.is_nil(achievements.recentGames(nil))
+  end)
+
+  it("matches the game on the same console last played during the session", function()
+    local recent = {
+      { id = 11220, console = 12, at = utc(start + 1700) },
+      { id = 5, console = 12, at = utc(start - 3600) }, -- earlier
+      { id = 6, console = 3, at = utc(start + 60) }, -- another console
+    }
+    assert.same({ gt2 = 11220 }, achievements.matchPlays({ gt2 = play }, recent, {}))
+  end)
+
+  it("allows some margin around the session", function()
+    local recent = { { id = 11220, console = 12, at = utc(start - 60) } }
+    assert.same({ gt2 = 11220 }, achievements.matchPlays({ gt2 = play }, recent, {}))
+  end)
+
+  it("skips games other library games already are, and plays with several candidates", function()
+    local recent = { { id = 11220, console = 12, at = utc(start + 1700) }, { id = 99, console = 12, at = utc(start + 1850) } }
+    assert.same({ gt2 = 11220 }, achievements.matchPlays({ gt2 = play }, recent, { [99] = true }))
+    assert.same({}, achievements.matchPlays({ gt2 = play }, recent, {}))
+  end)
+
+  it("gives no id two plays share", function()
+    local recent = { { id = 11220, console = 12, at = utc(start + 1700) } }
+    local other = { from = start + 1500, to = start + 1750, console = 12 }
+    assert.same({}, achievements.matchPlays({ gt2 = play, other = other }, recent, {}))
   end)
 end)
 

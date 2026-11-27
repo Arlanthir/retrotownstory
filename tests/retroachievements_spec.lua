@@ -30,6 +30,18 @@ describe("retroachievements.queue", function()
     assert.same({ ["52cfddc12af6a3a64030f62ccf6aca83"] = true }, state.pendingAchievementHashes)
   end)
 
+  it("keeps the last session of owned games with neither id nor hash, on consoles with achievements", function()
+    local state = save.defaults()
+    local playlist = { id = "psx:./gt2.m3u", system = "psx" }
+    local computer = { id = "dos:./doom", system = "dos" }
+    local unlaunched = { id = "psx:./ff7.m3u", system = "psx" }
+    for _, game in ipairs({ playlist, computer, unlaunched }) do state.owned[game.id] = true end
+    local sessions = { [playlist.id] = { start = 1000, seconds = 600 }, [computer.id] = { start = 2000, seconds = 60 } }
+    retroachievements.queue(state, { playlist, computer, unlaunched }, nil, sessions)
+    assert.same({ [playlist.id] = { from = 1000, to = 1600, console = 12 } }, state.pendingAchievementPlays)
+    assert.same({}, state.pendingAchievementHashes)
+  end)
+
   it("queues games the caller says were playable, such as an ended GotX loan launched from here", function()
     local state = save.defaults()
     local loaned = { id = "gbc:shantae", cheevosId = 4141 }

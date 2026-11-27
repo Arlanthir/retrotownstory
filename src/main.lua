@@ -151,14 +151,14 @@ local function prepare(newGame)
   local games = catalog.allGames(app.backend)
   favorites.apply(games)
   app.cheevos = app.listing.cheevos
-  achievements.resolveIds(games, app.cheevos.ids)
+  achievements.resolveIds(games, app.cheevos.ids, app.cheevos.games)
   -- New players get their first console from Professor Cork, in the museum.
   app.state.initialized = true
   progression.syncOwnedConsoles(app.state, games)
   -- Games launched from here since the last start: the launcher only starts games the player could
-  -- play (owned, or on loan), even if a GotX loan has ended since.
+  -- play (owned, or on loan), even if a GotX loan has ended since. Each has its last session.
   local launched = {}
-  for i = app.state.consumedSessions + 1, #sessions do launched[sessions[i].id] = true end
+  for i = app.state.consumedSessions + 1, #sessions do launched[sessions[i].id] = sessions[i] end
   local earned, played = playtime.credit(app.state, app.backend, games, sessions)
   if earned > 0 then app:announce(("+%d coins from play"):format(earned)) end
   for _, game in ipairs(played) do
@@ -167,7 +167,7 @@ local function prepare(newGame)
   pause()
   app.gotxWinners = app.gotxWinners or loadGotx()
   app:rebuild()
-  retroachievements.queue(app.state, played, function(game) return launched[game.id] or app:canPlay(game) end)
+  retroachievements.queue(app.state, played, function(game) return launched[game.id] or app:canPlay(game) end, launched)
   app.prepared = { newGame = newGame, firstSession = not newGame and sessions[1] and sessions[1].start or nil }
 end
 

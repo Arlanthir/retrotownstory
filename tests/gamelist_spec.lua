@@ -34,6 +34,12 @@ describe("gamelist.parse", function()
     assert.is_nil(other[1].screenscraperId)
   end)
 
+  it("drops the all-zeros hash scrapers give files they couldn't hash", function()
+    local playlist = gamelist.parse('<gameList><game><path>./a.m3u</path>'
+      .. '<cheevosHash>00000000000000000000000000000000</cheevosHash></game></gameList>', "psx", "/userdata/roms/psx")
+    assert.is_nil(playlist[1].cheevosHash)
+  end)
+
   it("decodes named and numeric entities", function()
     assert.equal("Samus & the baby Metroid é❤", games[1].desc)
   end)
